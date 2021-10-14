@@ -21,7 +21,7 @@ PubSubClient client(espClient);
 // port
 #define powerledPin A0
 const int ledPin = 2;
-const int buzzerPin = 12;
+const int buzzerPin = 6;
 #define CLK D2
 #define DIO D3
 
@@ -31,6 +31,7 @@ TM1637 tm1637(CLK,DIO);
 const int powerledPin_rate = 800;// imp/kWh
 const int maxPower = 6500;
 const int beep_delay = 400;
+const int frequency = 500; //hz
 
 
 int light1;
@@ -85,6 +86,8 @@ void setup() {
 	digitalWrite(buzzerPin, LOW);
 	pinMode(ledPin, OUTPUT);
 	digitalWrite(ledPin, LOW);
+	pinMode(5, OUTPUT);
+	digitalWrite(5, HIGH);
 	// pinMode(sensor_VccPin, OUTPUT);
 	// digitalWrite(sensor_VccPin, HIGH);
 	tm1637.init();
@@ -92,8 +95,8 @@ void setup() {
 
 
 
-
-	// Network
+///////////////////////////////////
+	// Network INIT
 	// connecting to a WiFi network
 	WiFi.begin(ssid, password);
 	while (WiFi.status() != WL_CONNECTED) {
@@ -135,6 +138,7 @@ void setup() {
 	// Auto Setting
 	// lcd.print("setting...");
 	Serial.println("setting");
+  displayPower(0000);
 	int light_a, light_b;
 	while(1){
 		light_a = analogRead(powerledPin);
@@ -218,13 +222,15 @@ void loop(){
 		if(!beep){
 			if(millis() - beepP >= beep_delay){
 				beep = true;
-				digitalWrite(buzzerPin, HIGH);
+				// digitalWrite(buzzerPin, HIGH);
+				tone(buzzerPin, frequency);
 				beepP = millis();
 			}
 		}else{
 			if(millis() - beepP >= beep_delay){
 				beep = false;
-				digitalWrite(buzzerPin, LOW);
+				// digitalWrite(buzzerPin, LOW);
+				noTone(buzzerPin);
 			}
 		}
 		
@@ -275,13 +281,15 @@ void loop(){
 		if(!beep){
 			if(millis() - beepP >= beep_delay){
 				beep = true;
-				digitalWrite(buzzerPin, HIGH);
+				// digitalWrite(buzzerPin, HIGH);
+        		tone(buzzerPin, frequency);
 				beepP = millis();
 			}
 		}else{
 			if(millis() - beepP >= beep_delay){
 				beep = false;
-				digitalWrite(buzzerPin, LOW);
+				// digitalWrite(buzzerPin, LOW);
+				noTone(buzzerPin);
 			}
 		}
 		
