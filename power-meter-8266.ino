@@ -21,7 +21,7 @@ PubSubClient client(espClient);
 // port
 #define powerledPin A0
 const int ledPin = 2;
-const int buzzerPin = 6;
+const int buzzerPin = D6;
 #define CLK D2
 #define DIO D3
 
@@ -31,7 +31,6 @@ TM1637 tm1637(CLK,DIO);
 const int powerledPin_rate = 800;// imp/kWh
 const int maxPower = 6500;
 const int beep_delay = 400;
-const int frequency = 500; //hz
 
 
 int light1;
@@ -135,6 +134,7 @@ void setup() {
 	// }
 
 
+///////////////////////////////////
 	// Auto Setting
 	// lcd.print("setting...");
 	Serial.println("setting");
@@ -222,15 +222,13 @@ void loop(){
 		if(!beep){
 			if(millis() - beepP >= beep_delay){
 				beep = true;
-				// digitalWrite(buzzerPin, HIGH);
-				tone(buzzerPin, frequency);
+				digitalWrite(buzzerPin, HIGH);
 				beepP = millis();
 			}
 		}else{
 			if(millis() - beepP >= beep_delay){
 				beep = false;
-				// digitalWrite(buzzerPin, LOW);
-				noTone(buzzerPin);
+				digitalWrite(buzzerPin, LOW);
 			}
 		}
 		
@@ -281,15 +279,13 @@ void loop(){
 		if(!beep){
 			if(millis() - beepP >= beep_delay){
 				beep = true;
-				// digitalWrite(buzzerPin, HIGH);
-        		tone(buzzerPin, frequency);
+				digitalWrite(buzzerPin, HIGH);
 				beepP = millis();
 			}
 		}else{
 			if(millis() - beepP >= beep_delay){
 				beep = false;
-				// digitalWrite(buzzerPin, LOW);
-				noTone(buzzerPin);
+				digitalWrite(buzzerPin, LOW);
 			}
 		}
 		
