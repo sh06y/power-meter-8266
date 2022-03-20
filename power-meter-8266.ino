@@ -55,6 +55,7 @@ char message[1000];
 const char index_html[] PROGMEM = R"rawliteral(
 <!DOCTYPE HTML><html><head>
 	<title>控制面板</title>
+	<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
 	<meta name="viewport" content="width=device-width, initial-scale=1">
 	<script>
 		function submitMessage() {
@@ -70,23 +71,41 @@ const char index_html[] PROGMEM = R"rawliteral(
 	<h1>控制面板</h1>
 	<h2>网络设置</h2>
 	<form action="/wifi" target="hidden-form">
-		<input type="text" name="SSID" value="%wifipwd.ssid%">
-		<input type="text" name="passwd" value="%wifipwd.pwd%">
-
-
-		<input type="submit" value="Submit" onclick="submit_network()">
+		SSID: <input type="text" name="SSID" value=%SSID%><br>
+		密码: <input type="text" name="wifi_passwd" value=%wifi_passwd%><br>
+		<input type="submit" value="保存" onclick="submit_network()">
 	</form><br>
 
 	<h2>设置</h2>
 	<form action="/setting" target="hidden-form">
-		报警阈值: <input type="number" name="inputInt">
-		屏幕亮度(1-7): <input type="number" name="inputLight">
+		报警阈值(W): <input type="number" name="maxPower" value=%maxPower%><br>
+		屏幕亮度(1-7): <input type="number" name="backlightLevel", value=%backlightLevel%>
 		<input type="submit" value="保存" onclick="submitMessage()">
 	</form><br>
 	
 
 	<iframe style="display:none" name="hidden-form"></iframe>
 </body></html>)rawliteral";
+
+void notFound(AsyncWebServerRequest *request){
+  request->send(404, "text/plain", "Not found");
+}
+
+String processor(const String& var){
+	if(var == "SSID"){
+		return WiFi.SSID();
+	}
+	if(var == "wifi_passwd"){
+		return WiFi.psk();
+	}
+	if(var == "maxPower"){
+		return String(maxPower);
+	}
+	// if(var == "backlightLevel"){
+	// 	return String(tm1637.getBacklight());
+	// }
+	return String();
+}
 
 void blinkled() {
 	digitalWrite(ledPin, LOW);
@@ -144,13 +163,13 @@ void reconnect(){
 	if(WiFi.status() != WL_CONNECTED) {
 		// 如果wifi断开的话就重连
 		WiFi.reconnect();
+		while(WiFi.status() != WL_CONNECTED) {
+			delay(500);
+			Serial.println("Connecting to WiFi..");
+		}
+		Serial.println("Connected to the WiFi network");
 	}
-	while(WiFi.status() != WL_CONNECTED) {
-		delay(500);
-		Serial.println("Connecting to WiFi..");
-	}
-	// digitalWrite(ledPin, HIGH);
-	Serial.println("Connected to the WiFi network");
+	
 	while(!client.connected()) {
 		String client_id = "esp8266-client-";
 		client_id += String(WiFi.macAddress());
@@ -198,12 +217,29 @@ void setup() {
 
 ///////////////////////////////////
 	// Network INIT
-	// if(digitalRead(resetButton) == LOW) {
-	// 	// 密码重置
-	// 	Serial.println("reset wifi");
-	// 	clearConfig();
-	// }
+	if(digitalRead(resetButton) == LOW) {
+		// 密码重置
+		Serial.println("reset wifi");
+		clearConfig();
+	}
 	smartConfig();
+
+///////////////////////////////////
+	// MQTT INIT
+	// 连接MQTT服务器
+	client.setServer(mqtt_broker, mqtt_port);
+	while (!client.connected()) {
+		String client_id = "esp8266-client-";
+		client_id += String(WiFi.macAddress());
+		Serial.printf("The client %s connects to the public mqtt broker\n", client_id.c_str());
+		if (client.connect(client_id.c_str())) {
+			Serial.println("Public emqx mqtt broker connected");
+		} else {
+			Serial.print("failed with state ");
+			Serial.print(client.state());
+			delay(2000);
+		}
+	}
 
 	// client.publish(topic, "hello world");
 
@@ -246,8 +282,11 @@ void setup() {
 ///////////////////////////////////
 	//web page
 	server.on("/", HTTP_GET, [](AsyncWebServerRequest *request){
-		request->send_P(200, "text/html", index_html);
+		request->send_P(200, "text/html", index_html, processor);
 	});
+
+	server.onNotFound(notFound);
+	server.begin();
 
 ///////////////////////////////////
 	// Auto Setting
@@ -257,7 +296,7 @@ void setup() {
 	int light_a, light_b;
 	while(1){
 		light_a = analogRead(powerledPin);
-		Serial.println(light_a);
+		// Serial.println(light_a);
 		delay(50);
 		light_b = analogRead(powerledPin);
 		if(light_b - light_a >= 50){
@@ -314,10 +353,10 @@ void loop(){
 			delay(300);
 			break;
 		}
-		if(digitalRead(resetButton) == 1){
-			clearConfig();
-			Serial.println("重置网络成功");
-		}
+		// if(digitalRead(resetButton) == 1){
+		// 	clearConfig();
+		// 	Serial.println("重置网络成功");
+		// }
 		yield();
 		client.loop();
 	}
@@ -370,10 +409,10 @@ void loop(){
 			delay(300);
 			break;
 		}
-		if(digitalRead(resetButton) == 1){
-			clearConfig();
-			Serial.println("重置网络成功");
-		}
+		// if(digitalRead(resetButton) == 1){
+		// 	clearConfig();
+		// 	Serial.println("重置网络成功");
+		// }
 		yield();
 		client.loop();
 	}
