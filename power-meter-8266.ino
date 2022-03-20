@@ -5,10 +5,8 @@
 #include <PubSubClient.h>
 #include "TM1637.h"
 #include "smartconfig.h"
-
-// WiFi
-const char *ssid = "HUAWEI-WiFi"; // Enter your WiFi name
-const char *password = "shyh302088ypjss";  // Enter WiFi password
+#include <ESPAsyncWebServer.h>
+#include <ESPAsyncTCP.h>
 
 // MQTT Broker
 const char *mqtt_broker = "192.168.0.12";
@@ -20,7 +18,7 @@ const int mqtt_port = 1883;
 
 WiFiClient espClient;
 PubSubClient client(espClient);
-
+AsyncWebServer server(80);
 
 // port
 #define powerledPin A0
@@ -53,6 +51,42 @@ bool beep = false;
 
 char message[1000];
 
+// HTML web page
+const char index_html[] PROGMEM = R"rawliteral(
+<!DOCTYPE HTML><html><head>
+	<title>控制面板</title>
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<script>
+		function submitMessage() {
+			alert("已保存");
+			// setTimeout(function(){ document.location.reload(false); }, 500);   
+		}
+		function submit_network() {
+			alert("已保存，在重启后应用生效");
+			// setTimeout(function(){ document.location.reload(false); }, 500);   
+		}
+	</script></head>
+	<body>
+	<h1>控制面板</h1>
+	<h2>网络设置</h2>
+	<form action="/wifi" target="hidden-form">
+		<input type="text" name="SSID" value="%wifipwd.ssid%">
+		<input type="text" name="passwd" value="%wifipwd.pwd%">
+
+
+		<input type="submit" value="Submit" onclick="submit_network()">
+	</form><br>
+
+	<h2>设置</h2>
+	<form action="/setting" target="hidden-form">
+		报警阈值: <input type="number" name="inputInt">
+		屏幕亮度(1-7): <input type="number" name="inputLight">
+		<input type="submit" value="保存" onclick="submitMessage()">
+	</form><br>
+	
+
+	<iframe style="display:none" name="hidden-form"></iframe>
+</body></html>)rawliteral";
 
 void blinkled() {
 	digitalWrite(ledPin, LOW);
@@ -154,7 +188,7 @@ void setup() {
 	digitalWrite(buzzerPin, LOW);
 	pinMode(ledPin, OUTPUT);
 	digitalWrite(ledPin, LOW);
-	pinMode(resetButton, INPUT);
+	pinMode(5, INPUT);
 	// pinMode(sensor_VccPin, OUTPUT);
 	// digitalWrite(sensor_VccPin, HIGH);
 	tm1637.init();
@@ -164,6 +198,11 @@ void setup() {
 
 ///////////////////////////////////
 	// Network INIT
+	// if(digitalRead(resetButton) == LOW) {
+	// 	// 密码重置
+	// 	Serial.println("reset wifi");
+	// 	clearConfig();
+	// }
 	smartConfig();
 
 	// client.publish(topic, "hello world");
@@ -204,7 +243,11 @@ void setup() {
 	// });
 	// ArduinoOTA.begin();
 
-
+///////////////////////////////////
+	//web page
+	server.on("/", HTTP_GET, [](AsyncWebServerRequest *request){
+		request->send_P(200, "text/html", index_html);
+	});
 
 ///////////////////////////////////
 	// Auto Setting
