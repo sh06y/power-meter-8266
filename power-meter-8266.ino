@@ -341,113 +341,55 @@ void setup() {
 
 void loop(){
 	
-	// yield();
-	while(1){
-		ArduinoOTA.handle();
-
-		light1 = analogRead(A0);
-		if(light1 > powerledPin_average){
-			// led on
+	light1 = analogRead(A0);
+	if(light1 > powerledPin_average){
+		// led on
+		if(timeA == 0){
 			timeA = micros();
-			// powerSupply_test();
-			delay(300);
-			break;
-		}
-		// if(digitalRead(resetButton) == 1){
-		// 	clearConfig();
-		// 	Serial.println("重置网络成功");
-		// }
-		yield();
-		client.loop();
-	}
-	
-
-	// 计算两次亮灯之间的间隙
-	time_light = timeA - timeB;
-
-	power = 1. / powerledPin_rate * 1000 * 3600 * 1000000 / time_light;
-
-	Serial.println(power);
-	sprintf(message, "%.1f", power);
-	reconnect();
-	client.publish(topic, message);
-	delay(200);
-
-	displayPower(power);
-
-
-	if(power >= maxPower){
-		if(!beep){
-			if(millis() - beepP >= beep_delay){
-				beep = true;
-				digitalWrite(buzzerPin, HIGH);
-				beepP = millis();
-			}
 		}else{
-			if(millis() - beepP >= beep_delay){
-				beep = false;
-				digitalWrite(buzzerPin, LOW);
-			}
-		}
-		
-	}else{
-		beep = false;
-		digitalWrite(buzzerPin, LOW);
-	}
-	// Serial.println(beep);
-
-	
-	// yield();
-	while(1){
-		ArduinoOTA.handle();
-
-		light1 = analogRead(A0);
-		if(light1 > powerledPin_average){
-			// led on
 			timeB = micros();
-			// powerSupply_test();
-			delay(300);
-			break;
-		}
-		// if(digitalRead(resetButton) == 1){
-		// 	clearConfig();
-		// 	Serial.println("重置网络成功");
-		// }
-		yield();
-		client.loop();
-	}
-	// client.loop();
-	
-	// 计算两次亮灯之间的间隙
-	time_light = timeB - timeA;
+			// 计算两次亮灯之间的间隙
+			time_light = timeB - timeA;
+			power = 1. / powerledPin_rate * 1000 * 3600 * 1000000 / time_light;
 
-	power = 1. / powerledPin_rate * 1000 * 3600 * 1000 * 1000 / time_light;
+			timeA = timeB;
 
-	Serial.println(power);
-	sprintf(message, "%.1f", power);
-	reconnect();
-	client.publish(topic, message);
-	delay(200);
+			Serial.println(power);
+			sprintf(message, "%.1f", power);
+			reconnect();
+			client.publish(topic, message);
+			delay(200);
 
-	displayPower(power);
+			displayPower(power);
+			
+			if(power >= maxPower){
+				if(!beep){
+					if(millis() - beepP >= beep_delay){
+						beep = true;
+						digitalWrite(buzzerPin, HIGH);
+						beepP = millis();
+					}
+				}else{
+					if(millis() - beepP >= beep_delay){
+						beep = false;
+						digitalWrite(buzzerPin, LOW);
+					}
+				}
 
-
-	if(power >= maxPower){
-		if(!beep){
-			if(millis() - beepP >= beep_delay){
-				beep = true;
-				digitalWrite(buzzerPin, HIGH);
-				beepP = millis();
-			}
-		}else{
-			if(millis() - beepP >= beep_delay){
+			}else{
 				beep = false;
 				digitalWrite(buzzerPin, LOW);
 			}
 		}
 		
-	}else{
-		beep = false;
-		digitalWrite(buzzerPin, LOW);
 	}
+
+	if(digitalRead(resetButton) == 1){
+		clearConfig();
+		Serial.println("重置网络成功");
+	}
+	
+
+	delay(10);
+
 }
