@@ -217,9 +217,9 @@ void setup() {
 
 ///////////////////////////////////
 	// Network INIT
-	if(digitalRead(resetButton) == LOW) {
+	if(digitalRead(resetButton) == HIGH) {
 		// 密码重置
-		Serial.println("reset wifi");
+		Serial.println("resetting...");
 		clearConfig();
 	}
 	smartConfig();
