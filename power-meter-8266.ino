@@ -31,8 +31,8 @@ const int buzzerPin = 16;
 TM1637 tm1637(CLK,DIO);
 
 // 变量
-const int powerledPin_rate = 800;// imp/kWh
-const int maxPower = 6500;
+int powerledPin_rate = 800;// imp/kWh
+int maxPower = 6500;
 const int beep_delay = 400;
 
 
@@ -69,7 +69,10 @@ const char index_html[] PROGMEM = R"rawliteral(
 	</script></head>
 	<body>
 	<h1>控制面板</h1>
-	<h2>网络设置</h2>
+
+	<p>当前功率：%currentPower%W</p>
+
+	<h2>WiFi设置</h2>
 	<form action="/wifi" target="hidden-form">
 		SSID: <input type="text" name="SSID" value=%SSID%><br>
 		密码: <input type="text" name="wifi_passwd" value=%wifi_passwd%><br>
@@ -79,7 +82,9 @@ const char index_html[] PROGMEM = R"rawliteral(
 	<h2>设置</h2>
 	<form action="/setting" target="hidden-form">
 		报警阈值(W): <input type="number" name="maxPower" value=%maxPower%><br>
-		屏幕亮度(1-7): <input type="number" name="backlightLevel", value=%backlightLevel%>
+		脉冲频率(imp/kWh): <input type="number" name="powerledPin_rate" value=%powerledPin_rate%><br>
+		<!-- 屏幕亮度(1-7): <input type="number" name="backlightLevel", value=%backlightLevel%> -->
+		<br>
 		<input type="submit" value="保存" onclick="submitMessage()">
 	</form><br>
 	
@@ -88,7 +93,7 @@ const char index_html[] PROGMEM = R"rawliteral(
 </body></html>)rawliteral";
 
 void notFound(AsyncWebServerRequest *request){
-  request->send(404, "text/plain", "Not found");
+	request->send(404, "text/plain", "404 Not found!");
 }
 
 String processor(const String& var){
@@ -100,6 +105,12 @@ String processor(const String& var){
 	}
 	if(var == "maxPower"){
 		return String(maxPower);
+	}
+	if(var == "currentPower"){
+		return String(power);
+	}
+	if(var == "powerledPin_rate"){
+		return String(powerledPin_rate);
 	}
 	// if(var == "backlightLevel"){
 	// 	return String(tm1637.getBacklight());
@@ -283,6 +294,19 @@ void setup() {
 	//web page
 	server.on("/", HTTP_GET, [](AsyncWebServerRequest *request){
 		request->send_P(200, "text/html", index_html, processor);
+	});
+	server.on("/setting", HTTP_GET, [](AsyncWebServerRequest *request){
+		if(request->hasParam("maxPower")){
+			maxPower = atoi(request->getParam("maxPower")->value().c_str());
+			
+			Serial.println("set maxPower: " + String(maxPower));
+		}
+		if(request->hasParam("powerledPin_rate")){
+			powerledPin_rate = atoi(request->getParam("powerledPin_rate")->value().c_str());
+			
+			Serial.println("set powerledPin_rate: " + String(powerledPin_rate));
+		}
+		
 	});
 
 	server.onNotFound(notFound);
