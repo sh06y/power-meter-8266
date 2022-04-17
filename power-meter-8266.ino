@@ -126,6 +126,28 @@ void blinkled() {
 }
 
 
+void saveParams(){
+	// save params
+	EEPROM.begin(2048);
+	EEPROM.write(1025, maxPower / 50);
+	EEPROM.write(1026, powerledPin_rate / 5);
+	EEPROM.commit();
+
+}
+
+void loadParams(){
+	// load params
+	EEPROM.begin(2048);
+	maxPower = EEPROM.read(1025) * 50;
+	powerledPin_rate = EEPROM.read(1026) * 5;
+	Serial.println("loadParams:");
+	Serial.print("maxPower: ");
+	Serial.println(maxPower);
+	Serial.print("powerledPin_rate: ");
+	Serial.println(powerledPin_rate);
+
+}
+
 void smartConfig() {
 	// 先从flash中加载账号密码
 	WifiPwd* wifipwd = loadConfigs();
@@ -137,6 +159,10 @@ void smartConfig() {
 		while (WiFi.status() != WL_CONNECTED) {
 		  // 直到wifi连接成功为止
 			blinkled();
+			if(digitalRead(resetButton) == 1){
+				clearConfig();
+				Serial.println("重置网络成功");
+			}
 		}
 		// 删除内存
 		delete wifipwd;
@@ -177,6 +203,11 @@ void reconnect(){
 		while(WiFi.status() != WL_CONNECTED) {
 			delay(500);
 			Serial.println("Connecting to WiFi..");
+			blinkled();
+			if(digitalRead(resetButton) == 1){
+				clearConfig();
+				Serial.println("重置网络成功");
+			}
 		}
 		Serial.println("Connected to the WiFi network");
 	}
@@ -212,15 +243,17 @@ void displayPower(int power){
 void setup() {
 	Serial.begin(9600);
 	Serial.println("Hello, World!");
-	// clearConfig();
 	// I/O
 	pinMode(buzzerPin, OUTPUT);
 	digitalWrite(buzzerPin, LOW);
 	pinMode(ledPin, OUTPUT);
 	digitalWrite(ledPin, LOW);
 	pinMode(5, INPUT);
-	// pinMode(sensor_VccPin, OUTPUT);
+	pinMode(resetButton, INPUT);
 	// digitalWrite(sensor_VccPin, HIGH);
+
+	loadParams();
+	
 	tm1637.init();
 	tm1637.set(BRIGHT_TYPICAL);//BRIGHT_TYPICAL = 2,BRIGHT_DARKEST = 0,BRIGHTEST = 7;
 
@@ -298,14 +331,13 @@ void setup() {
 	server.on("/setting", HTTP_GET, [](AsyncWebServerRequest *request){
 		if(request->hasParam("maxPower")){
 			maxPower = atoi(request->getParam("maxPower")->value().c_str());
-			
 			Serial.println("set maxPower: " + String(maxPower));
 		}
 		if(request->hasParam("powerledPin_rate")){
 			powerledPin_rate = atoi(request->getParam("powerledPin_rate")->value().c_str());
-			
 			Serial.println("set powerledPin_rate: " + String(powerledPin_rate));
 		}
+		saveParams();
 		
 	});
 
