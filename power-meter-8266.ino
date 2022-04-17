@@ -127,13 +127,14 @@ const char index_html[] PROGMEM = R"rawliteral(
 		<br>
 		<input type="submit" value="保存" onclick="submitMessage()">
 	</form><br>
-	<!--
 	<h2>更新</h2>
 	<button onclick="document.location.href='/checkUpdate'">检查更新</button>
+	<!--
 	<form action="/update" target="hidden-form">
 		更新服务器地址（请勿随意修改）：<input type="text" value=%update_server% onclick="submitMessage()">
 	</form><br>
 	-->
+	<iframe name="hidden-form" style="display:none"></iframe>
 </body></html>)rawliteral";
 
 void notFound(AsyncWebServerRequest *request){
@@ -397,10 +398,12 @@ void setup() {
 	server.on("/setting", HTTP_GET, [](AsyncWebServerRequest *request){
 		if(request->hasParam("maxPower")){
 			maxPower = atoi(request->getParam("maxPower")->value().c_str());
+			request->send(200, "text/plain", "success");
 			Serial.println("set maxPower: " + String(maxPower));
 		}
 		if(request->hasParam("powerledPin_rate")){
 			powerledPin_rate = atoi(request->getParam("powerledPin_rate")->value().c_str());
+			request->send(200, "text/plain", "success");
 			Serial.println("set powerledPin_rate: " + String(powerledPin_rate));
 		}
 		saveParams();
