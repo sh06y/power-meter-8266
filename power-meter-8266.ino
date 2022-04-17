@@ -125,6 +125,21 @@ void blinkled() {
 	delay(200);
 }
 
+void resetWiFi(){
+	if(digitalRead(resetButton) == 1){
+		Serial.println("重置网络成功");
+		for(int i = 1; i <= 2; i++){
+			digitalWrite(ledPin, LOW);
+			digitalWrite(ledPin, LOW);
+			delay(100);
+			digitalWrite(ledPin, HIGH);
+			digitalWrite(ledPin, HIGH);
+			delay(100);
+		}
+		clearConfig();
+		delay(1000);
+	}
+}
 
 void saveParams(){
 	// save params
@@ -159,10 +174,7 @@ void smartConfig() {
 		while (WiFi.status() != WL_CONNECTED) {
 		  // 直到wifi连接成功为止
 			blinkled();
-			if(digitalRead(resetButton) == 1){
-				clearConfig();
-				Serial.println("重置网络成功");
-			}
+			resetWiFi();
 		}
 		// 删除内存
 		delete wifipwd;
@@ -261,11 +273,7 @@ void setup() {
 
 ///////////////////////////////////
 	// Network INIT
-	if(digitalRead(resetButton) == HIGH) {
-		// 密码重置
-		Serial.println("resetting...");
-		clearConfig();
-	}
+	resetWiFi();
 	smartConfig();
 
 ///////////////////////////////////
@@ -387,7 +395,7 @@ void setup() {
 
 			break;
 		}
-
+		resetWiFi();
 	}
 
 }
@@ -440,10 +448,7 @@ void loop(){
 		
 	}
 
-	if(digitalRead(resetButton) == 1){
-		clearConfig();
-		Serial.println("重置网络成功");
-	}
+	resetWiFi();
 	
 
 	delay(10);
