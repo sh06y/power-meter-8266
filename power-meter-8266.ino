@@ -1,3 +1,41 @@
+/**
+	******************************************************************************
+	* @File Name          : power-meter-8266.ino
+	* @Author             : sh06y
+	* @date               : 2022-04-17
+	* @Description        : This file provides code for the firmware.
+	* @Copyring           : Copyright (c) sh06y. All right reserved.
+*/
+const int FW_VERSION = 2;
+
+/*
+________________#########______________________
+______________############_____________________
+______________#############____________________
+_____________##__###########___________________
+____________###__######_#####__________________
+____________###_#######___####_________________
+___________###__##########_####________________
+__________####__###########_####_______________
+________#####___###########__#####_____________
+_______######___###_########___#####___________
+_______#####___###___########___######_________
+______######___###__###########___######_______
+_____######___####_##############__######______
+____#######__#####################_#######_____
+____#######__##############################____
+___#######__######_#################_#######___
+___#######__######_######_#########___######___
+___#######____##__######___######_____######___
+___#######________######____#####_____#####____
+____######________#####_____#####_____####_____
+_____#####________####______#####_____###______
+______#####______;###________###______#________
+________##_______####________####______________
+***********************************************
+***********************************************
+*/
+
 #include <ESP8266WiFi.h>
 #include <ESP8266mDNS.h>
 #include <WiFiUdp.h>
@@ -7,6 +45,8 @@
 #include "smartconfig.h"
 #include <ESPAsyncWebServer.h>
 #include <ESPAsyncTCP.h>
+#include <ESP8266HTTPClient.h>
+#include <ESP8266httpUpdate.h>
 
 // MQTT Broker
 const char *mqtt_broker = "192.168.0.12";
@@ -63,7 +103,7 @@ const char index_html[] PROGMEM = R"rawliteral(
 			// setTimeout(function(){ document.location.reload(false); }, 500);   
 		}
 		function submit_network() {
-			alert("已保存，在重启后应用生效");
+			alert("已保存，正在重启...");
 			// setTimeout(function(){ document.location.reload(false); }, 500);   
 		}
 	</script></head>
@@ -87,9 +127,13 @@ const char index_html[] PROGMEM = R"rawliteral(
 		<br>
 		<input type="submit" value="保存" onclick="submitMessage()">
 	</form><br>
-	
-
-	<iframe style="display:none" name="hidden-form"></iframe>
+	<!--
+	<h2>更新</h2>
+	<button onclick="document.location.href='/checkUpdate'">检查更新</button>
+	<form action="/update" target="hidden-form">
+		更新服务器地址（请勿随意修改）：<input type="text" value=%update_server% onclick="submitMessage()">
+	</form><br>
+	-->
 </body></html>)rawliteral";
 
 void notFound(AsyncWebServerRequest *request){
@@ -112,6 +156,9 @@ String processor(const String& var){
 	if(var == "powerledPin_rate"){
 		return String(powerledPin_rate);
 	}
+	// if(var == "update_server"){
+	// 	return String(update_server);
+	// }
 	// if(var == "backlightLevel"){
 	// 	return String(tm1637.getBacklight());
 	// }
@@ -172,7 +219,7 @@ void smartConfig() {
 		WiFi.mode(WIFI_STA);
 		WiFi.begin(wifipwd->ssid, wifipwd->pwd);
 		while (WiFi.status() != WL_CONNECTED) {
-		  // 直到wifi连接成功为止
+			// 直到wifi连接成功为止
 			blinkled();
 			resetWiFi();
 		}
@@ -239,6 +286,50 @@ void reconnect(){
 	}
 }
 
+void checkUpdate(){
+	HTTPClient httpClient;
+	httpClient.begin(espClient, "http://update.sy-blog.moe/meter/");
+	int httpCode = httpClient.GET();
+	if(httpCode == 200) {
+		String newFWVersion = httpClient.getString();
+
+		Serial.print("Current firmware version: ");
+		Serial.println(FW_VERSION);
+		Serial.print("Available firmware version: ");
+		Serial.println(newFWVersion);
+
+		int newVersion = newFWVersion.toInt();
+
+		if(newVersion > FW_VERSION) {
+			Serial.println("Preparing to update");
+			String fwImageURL = "/meter/" + newFWVersion + ".bin";
+
+			displayPower(9999);
+			ESPhttpUpdate.rebootOnUpdate(true);
+			t_httpUpdate_return ret = ESPhttpUpdate.update(espClient, "update.sy-blog.moe", 80, fwImageURL);
+			
+			switch(ret){
+			    case HTTP_UPDATE_FAILED:
+			        Serial.println("[update] Update failed.");
+			        break;
+			    case HTTP_UPDATE_NO_UPDATES:
+			        Serial.println("[update] Update no Update.");
+			        break;
+			    case HTTP_UPDATE_OK:
+			        Serial.println("[update] Update ok."); // may not be called since we reboot the ESP
+			        break;
+			}
+		}
+		else{
+			Serial.println("Already on latest version");
+		}
+	}else{
+		Serial.print("Firmware version check failed, got HTTP response code ");
+		Serial.println(httpCode);
+	}
+	httpClient.end();
+}
+
 void displayPower(int power){
 	int LCDprint[4];
 	LCDprint[0] = power % 10;
@@ -276,6 +367,9 @@ void setup() {
 	resetWiFi();
 	smartConfig();
 
+
+	checkUpdate();
+
 ///////////////////////////////////
 	// MQTT INIT
 	// 连接MQTT服务器
@@ -293,43 +387,7 @@ void setup() {
 		}
 	}
 
-	// client.publish(topic, "hello world");
 
-	// ArduinoOTA.setHostname("power-meter");
-	// // ArduinoOTA.setPassword("12345678");
-
-	// ArduinoOTA.onStart([]() {
-	// String type;
-	// if (ArduinoOTA.getCommand() == U_FLASH) {
-	// 	type = "sketch";
-	// } else { // U_FS
-	// 	type = "filesystem";
-	// }
-
-	// // NOTE: if updating FS this would be the place to unmount FS using FS.end()
-	// Serial.println("Start updating " + type);
-	// });
-	// ArduinoOTA.onEnd([]() {
-	// 	Serial.println("\nEnd");
-	// });
-	// ArduinoOTA.onProgress([](unsigned int progress, unsigned int total) {
-	// 	Serial.printf("Progress: %u%%\r", (progress / (total / 100)));
-	// });
-	// 	ArduinoOTA.onError([](ota_error_t error) {
-	// 	Serial.printf("Error[%u]: ", error);
-	// 	if (error == OTA_AUTH_ERROR) {
-	// 		Serial.println("Auth Failed");
-	// 	} else if (error == OTA_BEGIN_ERROR) {
-	// 		Serial.println("Begin Failed");
-	// 	} else if (error == OTA_CONNECT_ERROR) {
-	// 		Serial.println("Connect Failed");
-	// 	} else if (error == OTA_RECEIVE_ERROR) {
-	// 		Serial.println("Receive Failed");
-	// 	} else if (error == OTA_END_ERROR) {
-	// 		Serial.println("End Failed");
-	// 	}
-	// });
-	// ArduinoOTA.begin();
 
 ///////////////////////////////////
 	//web page
